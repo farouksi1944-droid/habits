@@ -329,7 +329,7 @@ export const StatsCards: React.FC<StatsCardsProps> = ({ habits, logs, selectedDa
           <div className="w-full h-1.5 bg-slate-800 rounded-full mt-3 overflow-hidden">
             <div
               className="h-full bg-gradient-to-r from-purple-500 to-pink-400 transition-all duration-500 rounded-full"
-              style={{ width: `${Math.min(100, (totalActive / 10) * 100)}%` }}
+              style={{ width: `${Math.min(100, (totalActive / Math.max(20, totalActive)) * 100)}%` }}
             />
           </div>
         </div>

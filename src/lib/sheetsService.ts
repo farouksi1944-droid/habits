@@ -618,7 +618,7 @@ export const syncFromSpreadsheet = async (
   await ensureSpreadsheetSchema(accessToken, cleanId);
 
   const ranges = [
-    sheetRange(HABITS_SHEET, 'A2:P300'),
+    sheetRange(HABITS_SHEET, 'A2:P500'),
     sheetRange(LOGS_SHEET, 'A2:G5000'),
   ];
   const query = ranges.map(r => `ranges=${encodeURIComponent(r)}`).join('&');

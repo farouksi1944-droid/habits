@@ -105,6 +105,10 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    saveCurrentHabit(true);
+  };
+
+  const saveCurrentHabit = (closeAfterSave: boolean) => {
     if (!name.trim()) return;
 
     const parsedTarget = Math.max(0.1, Number(goalTarget) || 1);
@@ -125,13 +129,18 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
       goalUnit: goalType === 'numeric' ? (goalUnit.trim() || 'مرة') : undefined,
       goalStep: goalType === 'numeric' ? parsedStep : undefined,
     });
-    onClose();
+
+    if (closeAfterSave) {
+      onClose();
+    } else {
+      setName('');
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-xs animate-in fade-in">
       <div 
-        className="w-full max-w-lg bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-6 text-right overflow-hidden my-8"
+        className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl p-6 text-right"
         role="dialog"
         aria-modal="true"
       >
@@ -499,14 +508,24 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
           </div>
 
           {/* Footer buttons */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex items-center justify-end gap-2.5 flex-wrap pt-4 border-t border-slate-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2.5 rounded-xl border border-slate-800 text-slate-400 hover:text-slate-200 text-sm"
+              className="px-4 py-2.5 rounded-xl border border-slate-800 text-slate-400 hover:text-slate-200 text-sm cursor-pointer"
             >
               إلغاء
             </button>
+            {!editingHabit && (
+              <button
+                type="button"
+                disabled={!name.trim()}
+                onClick={() => saveCurrentHabit(false)}
+                className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-45 text-emerald-400 border border-emerald-500/30 font-bold text-sm transition-all cursor-pointer"
+              >
+                حفظ وإضافة أخرى +
+              </button>
+            )}
             <button
               type="submit"
               className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-950/40 transition-all cursor-pointer"

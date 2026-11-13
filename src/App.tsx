@@ -509,7 +509,7 @@ export default function App() {
     } else {
       // Create new habit
       const newHabit: Habit = {
-        id: `habit-${Date.now()}`,
+        id: `habit-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         name: habitData.name || 'عادة جديدة',
         category: habitData.category || 'health',
         color: habitData.color || '#10b981',
@@ -528,9 +528,15 @@ export default function App() {
         archived: false,
       };
 
-      const updated = [...habits, newHabit];
-      setHabits(updated);
-      saveLocalHabits(updated);
+      setHabits(prev => {
+        const updated = [...prev, newHabit];
+        saveLocalHabits(updated);
+        return updated;
+      });
+
+      if (selectedCategory !== 'all' && selectedCategory !== newHabit.category) {
+        setSelectedCategory('all');
+      }
 
       if (isOnline && currentToken && spreadsheetInfo?.id) {
         setIsSyncing(true);
