@@ -1,0 +1,6 @@
+{
+  "name": "HabitFlow Sheets - متتبع العادات",
+  "description": "تطبيق ذكي وجميل لتتبع العادات اليومية مع مزامنة سحابية متقدمة على Google Sheets",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
