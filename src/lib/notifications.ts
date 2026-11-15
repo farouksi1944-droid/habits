@@ -2,6 +2,8 @@ import { Habit, ReminderSettings } from '../types';
 
 const REMINDER_SETTINGS_KEY = 'habitflow_reminder_settings';
 const REMINDED_LOG_KEY_PREFIX = 'habitflow_reminded_';
+const CONFIRMED_LOG_KEY_PREFIX = 'habitflow_confirmed_reminders_';
+const LAST_SENT_LOG_KEY_PREFIX = 'habitflow_last_sent_reminders_';
 const SNOOZED_REMINDERS_KEY = 'habitflow_snoozed_reminders';
 
 export const DEFAULT_TIME_OF_DAY_MAP: Record<Habit['timeOfDay'], string> = {
@@ -54,6 +56,14 @@ export const getReminderSettings = (): ReminderSettings => {
         enabled: parsed.enabled !== false,
         soundEnabled: parsed.soundEnabled !== false,
         browserNotificationsEnabled: Boolean(parsed.browserNotificationsEnabled),
+        leadMinutes:
+          typeof parsed.leadMinutes === 'number' && parsed.leadMinutes >= 0
+            ? parsed.leadMinutes
+            : 60,
+        repeatIntervalMinutes:
+          typeof parsed.repeatIntervalMinutes === 'number' && parsed.repeatIntervalMinutes >= 1
+            ? parsed.repeatIntervalMinutes
+            : 5,
       };
     }
   } catch {
@@ -63,6 +73,8 @@ export const getReminderSettings = (): ReminderSettings => {
     enabled: true,
     soundEnabled: true,
     browserNotificationsEnabled: typeof Notification !== 'undefined' && Notification.permission === 'granted',
+    leadMinutes: 60,
+    repeatIntervalMinutes: 5,
   };
 };
 
@@ -91,6 +103,63 @@ export const markHabitRemindedToday = (dateKey: string, habitId: string, timeStr
   } catch {
     // ignore
   }
+};
+
+export const getConfirmedTodayMap = (dateKey: string): Record<string, string> => {
+  try {
+    const raw = localStorage.getItem(`${CONFIRMED_LOG_KEY_PREFIX}${dateKey}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const markHabitConfirmedToday = (dateKey: string, habitId: string, timeStr: string) => {
+  try {
+    const map = getConfirmedTodayMap(dateKey);
+    map[habitId] = timeStr;
+    localStorage.setItem(`${CONFIRMED_LOG_KEY_PREFIX}${dateKey}`, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+};
+
+export interface LastSentEntry {
+  time: string;
+  sentAt: number;
+  count: number;
+}
+
+export const getLastSentTodayMap = (dateKey: string): Record<string, LastSentEntry> => {
+  try {
+    const raw = localStorage.getItem(`${LAST_SENT_LOG_KEY_PREFIX}${dateKey}`);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+};
+
+export const recordHabitReminderSent = (
+  dateKey: string,
+  habitId: string,
+  timeStr: string,
+  nowMs: number = Date.now()
+): LastSentEntry => {
+  const map = getLastSentTodayMap(dateKey);
+  const prev = map[habitId];
+  const nextCount = prev && prev.time === timeStr ? prev.count + 1 : 1;
+  const entry: LastSentEntry = {
+    time: timeStr,
+    sentAt: nowMs,
+    count: nextCount,
+  };
+  try {
+    map[habitId] = entry;
+    localStorage.setItem(`${LAST_SENT_LOG_KEY_PREFIX}${dateKey}`, JSON.stringify(map));
+  } catch {
+    // ignore
+  }
+  return entry;
 };
 
 export const getSnoozedMap = (): Record<string, number> => {
@@ -181,7 +250,12 @@ export const requestBrowserNotificationPermission = async (): Promise<Notificati
   }
 };
 
-export const sendBrowserNotification = async (title: string, body: string, tag?: string) => {
+export const sendBrowserNotification = async (
+  title: string,
+  body: string,
+  tag?: string,
+  persistent: boolean = false
+) => {
   if (typeof window === 'undefined' || !('Notification' in window)) return;
   if (Notification.permission !== 'granted') return;
 
@@ -189,14 +263,17 @@ export const sendBrowserNotification = async (title: string, body: string, tag?:
     if ('serviceWorker' in navigator) {
       const reg = await navigator.serviceWorker.getRegistration();
       if (reg && typeof reg.showNotification === 'function') {
-        await reg.showNotification(title, {
+        const swOptions: NotificationOptions & { renotify?: boolean } = {
           body,
           icon: '/pwa-192x192.png',
           badge: '/pwa-192x192.png',
           tag: tag || 'habitflow-reminder',
           dir: 'rtl',
           lang: 'ar',
-        });
+          requireInteraction: persistent,
+          renotify: persistent,
+        };
+        await reg.showNotification(title, swOptions);
         return;
       }
     }
@@ -207,6 +284,7 @@ export const sendBrowserNotification = async (title: string, body: string, tag?:
       tag: tag || 'habitflow-reminder',
       dir: 'rtl',
       lang: 'ar',
+      requireInteraction: persistent,
     });
     n.onclick = () => {
       window.focus();

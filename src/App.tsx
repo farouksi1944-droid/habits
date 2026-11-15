@@ -78,9 +78,9 @@ import { AnalyticsView } from './components/AnalyticsView';
 import { AddHabitModal } from './components/AddHabitModal';
 import { SheetSettingsModal } from './components/SheetSettingsModal';
 import { ConfirmationModal } from './components/ConfirmationModal';
-import { GoogleSignInCard } from './components/GoogleSignInCard';
 import { CalendarPopover } from './components/CalendarPopover';
 import { ReminderToastStack } from './components/ReminderToastStack';
+import { MotivationalBanner } from './components/MotivationalBanner';
 
 export default function App() {
   const { theme, toggleTheme } = useTheme();
@@ -111,7 +111,6 @@ export default function App() {
   const isSyncRunningRef = useRef(false);
   const isOnline = useOnlineStatus();
   const [pendingSyncCount, setPendingSyncCount] = useState<number>(() => getPendingSyncCount());
-  const [dismissedAuthBanner, setDismissedAuthBanner] = useState<boolean>(false);
 
   // Active Date Selection
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -742,8 +741,10 @@ export default function App() {
     enableBrowserNotifications,
     activeReminders,
     todaySchedule,
+    nextUpcomingReminder,
     dueCount: dueReminderCount,
     dismissReminder,
+    confirmReminder,
     snoozeReminder,
     completeFromReminder,
     triggerTestNotification,
@@ -785,8 +786,10 @@ export default function App() {
           browserNotificationPermission={browserNotificationPermission}
           onEnableBrowserNotifications={enableBrowserNotifications}
           todaySchedule={todaySchedule}
+          nextUpcomingReminder={nextUpcomingReminder}
           dueReminderCount={dueReminderCount}
           onCompleteHabitFromReminder={(habit, dateKey) => handleToggleComplete(habit, dateKey, true)}
+          onConfirmReminder={confirmReminder}
           onTriggerTestReminder={triggerTestNotification}
           onOpenAddModal={() => {
             setEditingHabit(null);
@@ -794,7 +797,6 @@ export default function App() {
           }}
           onOpenSettingsModal={() => setIsSettingsModalOpen(true)}
           onManualSync={handleManualSync}
-          onSignIn={handleSignIn}
           onSignOut={handleSignOut}
         />
       ) : (
@@ -891,6 +893,8 @@ export default function App() {
             )}
           </div>
 
+          <MotivationalBanner compact />
+
           {/* Focused Daily Habits List */}
           <div className="space-y-3">
             {focusHabits.length > 0 ? (
@@ -946,16 +950,6 @@ export default function App() {
       ) : (
         <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
           
-          {/* If user is not signed in with Google (and online + not dismissed), show the Google Sheets integration banner */}
-          {!user && isOnline && !dismissedAuthBanner && (
-            <GoogleSignInCard
-              onSignIn={handleSignIn}
-              isLoading={isAuthLoading}
-              onContinueOffline={() => setDismissedAuthBanner(true)}
-              error={authError}
-            />
-          )}
-
           {/* Sync message if active */}
           {syncStatusMessage && (
             <div className="p-3 bg-emerald-950/40 border border-emerald-500/30 rounded-2xl text-emerald-300 text-xs font-medium flex items-center justify-between">
@@ -1000,6 +994,9 @@ export default function App() {
               </div>
             </div>
           )}
+
+          {/* Daily Motivational Phrase */}
+          <MotivationalBanner />
 
           {/* Quick Stats Overview */}
           <StatsCards
@@ -1270,7 +1267,9 @@ export default function App() {
       {/* Active Habit Reminders Toast Stack */}
       <ReminderToastStack
         reminders={activeReminders}
+        repeatIntervalMinutes={reminderSettings.repeatIntervalMinutes}
         onComplete={completeFromReminder}
+        onConfirm={confirmReminder}
         onSnooze={snoozeReminder}
         onDismiss={dismissReminder}
       />

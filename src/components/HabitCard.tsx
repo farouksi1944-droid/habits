@@ -10,7 +10,8 @@ import {
   Plus,
   Minus,
   NotebookPen,
-  X
+  X,
+  AlertTriangle
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { Habit, HabitLog } from '../types';
@@ -23,7 +24,7 @@ import {
   getScheduledDaysArabic,
   calculateHabitPeriodCompletionRate
 } from '../lib/dateUtils';
-import { getEffectiveReminderTime, formatTimeArabic } from '../lib/notifications';
+import { getEffectiveReminderTime, formatTimeArabic, timeStringToMinutes } from '../lib/notifications';
 import { CircularProgressRing } from './CircularProgressRing';
 
 interface HabitCardProps {
@@ -110,6 +111,47 @@ export const HabitCard: React.FC<HabitCardProps> = ({
     calculateHabitPeriodCompletionRate(habit, logs, 7, selectedDate);
   const reminderTime = getEffectiveReminderTime(habit);
 
+  const [nowMinutes, setNowMinutes] = useState<number>(() => {
+    const d = new Date();
+    return d.getHours() * 60 + d.getMinutes();
+  });
+
+  useEffect(() => {
+    const updateClock = () => {
+      const d = new Date();
+      setNowMinutes(d.getHours() * 60 + d.getMinutes());
+    };
+    const timer = window.setInterval(updateClock, 60000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  const todayKey = toDateKey(new Date());
+  const isScheduledForSelected = isHabitScheduledForDay(habit, selectedDate);
+  const isPastDay = selectedDateKey < todayKey;
+  const isTodaySelected = selectedDateKey === todayKey;
+
+  let warningMessage: string | null = null;
+  let isUrgentWarning = false;
+
+  if (!isCompleted && isScheduledForSelected && (isTodaySelected || isPastDay)) {
+    if (isPastDay) {
+      warningMessage = 'تحذير: لم تُنجز هذه العادة في هذا اليوم!';
+      isUrgentWarning = true;
+    } else if (reminderTime) {
+      const targetMinutes = timeStringToMinutes(reminderTime);
+      if (targetMinutes >= 0 && nowMinutes > targetMinutes) {
+        warningMessage = `تحذير: فات موعد العادة (${formatTimeArabic(reminderTime)}) ولم تقم بها بعد!`;
+        isUrgentWarning = true;
+      } else if (targetMinutes >= 0 && nowMinutes >= targetMinutes - 60) {
+        warningMessage = `تنبيه: اقترب موعد العادة (${formatTimeArabic(reminderTime)}) ولم تُنجز بعد!`;
+      } else {
+        warningMessage = 'تنبيه: لم تقم بإنجاز هذه العادة اليوم بعد.';
+      }
+    } else {
+      warningMessage = 'تنبيه: لم تقم بإنجاز هذه العادة اليوم بعد.';
+    }
+  }
+
   const fireCelebration = () => {
     try {
       confetti({
@@ -187,7 +229,11 @@ export const HabitCard: React.FC<HabitCardProps> = ({
           ? focusMode
             ? 'bg-slate-900/55 border-emerald-500/30 opacity-75'
             : 'bg-slate-900/90 border-emerald-500/40 shadow-lg shadow-emerald-950/20'
-          : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
+          : isUrgentWarning
+            ? 'bg-slate-900/85 border-red-500/40 hover:border-red-500/60'
+            : warningMessage
+              ? 'bg-slate-900/85 border-amber-500/30 hover:border-amber-500/50'
+              : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'
       }`}
     >
       {/* Accent left colored bar */}
@@ -336,6 +382,25 @@ export const HabitCard: React.FC<HabitCardProps> = ({
                     <span>{formatTimeArabic(reminderTime)}</span>
                   </span>
                 )}
+              </div>
+            )}
+
+            {/* Uncompleted Habit Warning Message */}
+            {warningMessage && (
+              <div
+                role="status"
+                className={`mt-2.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold max-w-full ${
+                  isUrgentWarning
+                    ? 'bg-red-500/10 border-red-500/35 text-red-300'
+                    : 'bg-amber-500/10 border-amber-500/35 text-amber-300'
+                }`}
+              >
+                <AlertTriangle
+                  className={`w-3.5 h-3.5 shrink-0 ${
+                    isUrgentWarning ? 'text-red-400' : 'text-amber-400'
+                  }`}
+                />
+                <span>{warningMessage}</span>
               </div>
             )}
 

@@ -485,6 +485,12 @@ export const AddHabitModal: React.FC<AddHabitModalProps> = ({
                 <Bell className={`w-3.5 h-3.5 ${reminderEnabled ? 'text-amber-400' : 'text-slate-500'}`} />
               </button>
             </div>
+
+            {reminderEnabled && (
+              <p className="text-[11px] text-slate-400">
+                سيبدأ التذكير تلقائياً قبل الموعد بساعة ويتكرر حتى تؤكده أو تنجز العادة.
+              </p>
+            )}
           </div>
 
           {/* Color picker */}

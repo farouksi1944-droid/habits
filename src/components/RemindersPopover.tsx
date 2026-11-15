@@ -3,11 +3,13 @@ import {
   Bell,
   BellOff,
   Check,
+  CheckCheck,
   Volume2,
   VolumeX,
   MonitorSmartphone,
   Sparkles,
   Clock,
+  Repeat,
   X,
 } from 'lucide-react';
 import { Habit, ReminderSettings } from '../types';
@@ -23,7 +25,9 @@ interface RemindersPopoverProps {
   browserPermission: NotificationPermission | 'unsupported';
   onEnableBrowserNotifications: () => Promise<void>;
   todaySchedule: TodayReminderItem[];
+  nextUpcomingReminder: TodayReminderItem | null;
   onCompleteHabit: (habit: Habit, dateKey: string) => void;
+  onConfirmReminder: (habitId: string, scheduledTime?: string) => void;
   onTriggerTest: () => void;
 }
 
@@ -35,7 +39,9 @@ export const RemindersPopover: React.FC<RemindersPopoverProps> = ({
   browserPermission,
   onEnableBrowserNotifications,
   todaySchedule,
+  nextUpcomingReminder,
   onCompleteHabit,
+  onConfirmReminder,
   onTriggerTest,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -83,6 +89,28 @@ export const RemindersPopover: React.FC<RemindersPopoverProps> = ({
         </div>
       </div>
 
+      {/* Next Upcoming Habit Highlight */}
+      {nextUpcomingReminder && (
+        <div className="p-3 rounded-2xl bg-emerald-950/35 border border-emerald-500/30 space-y-1">
+          <div className="flex items-center justify-between text-[11px] text-emerald-400 font-bold">
+            <span className="font-mono">
+              {nextUpcomingReminder.minutesUntil > 0
+                ? `بعد ${nextUpcomingReminder.minutesUntil} دقيقة`
+                : nextUpcomingReminder.minutesUntil === 0
+                  ? 'الآن'
+                  : `متأخرة ${Math.abs(nextUpcomingReminder.minutesUntil)} د`}
+            </span>
+            <span>العادة التالية ({formatTimeArabic(nextUpcomingReminder.time)})</span>
+          </div>
+          <p className="text-xs font-bold text-slate-100 truncate">
+            {nextUpcomingReminder.habit.name}
+          </p>
+          <p className="text-[11px] text-slate-400">
+            يبدأ التذكير قبل الموعد بـ {settings.leadMinutes} دقيقة ويتكرر كل {settings.repeatIntervalMinutes} د حتى تؤكد.
+          </p>
+        </div>
+      )}
+
       {/* Quick Controls */}
       <div className="space-y-2">
         {/* Master Enable Toggle */}
@@ -105,6 +133,30 @@ export const RemindersPopover: React.FC<RemindersPopoverProps> = ({
             ) : (
               <BellOff className="w-4 h-4 text-slate-500" />
             )}
+          </div>
+        </div>
+
+        {/* Repeat Interval Selector */}
+        <div className="flex items-center justify-between gap-2 p-2.5 rounded-2xl bg-slate-950/70 border border-slate-800">
+          <div className="flex items-center gap-1">
+            {[2, 5, 10].map(mins => (
+              <button
+                key={mins}
+                type="button"
+                onClick={() => onUpdateSettings({ repeatIntervalMinutes: mins })}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-colors cursor-pointer ${
+                  settings.repeatIntervalMinutes === mins
+                    ? 'bg-emerald-600 text-white'
+                    : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200'
+                }`}
+              >
+                {mins} د
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-300">
+            <span>التكرار حتى التأكيد</span>
+            <Repeat className="w-3.5 h-3.5 text-emerald-400" />
           </div>
         </div>
 
@@ -189,34 +241,48 @@ export const RemindersPopover: React.FC<RemindersPopoverProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between text-xs">
           <span className="text-[11px] text-slate-400 font-mono">{todaySchedule.length} مواعيد</span>
-          <h4 className="font-bold text-slate-300">جدول تذكيرات اليوم</h4>
+          <h4 className="font-bold text-slate-300">جدول تذكيرات اليوم (قبل ساعة)</h4>
         </div>
 
         <div className="max-h-56 overflow-y-auto space-y-1.5 pl-1">
           {todaySchedule.length > 0 ? (
-            todaySchedule.map(({ habit, time, completed, status }) => (
+            todaySchedule.map(({ habit, time, completed, confirmed, status }) => (
               <div
                 key={habit.id}
                 className={`flex items-center justify-between gap-2 p-2.5 rounded-xl border transition-colors ${
                   completed
                     ? 'bg-slate-950/40 border-slate-800/60 opacity-65'
-                    : status === 'due'
-                      ? 'bg-emerald-950/30 border-emerald-500/40'
-                      : status === 'missed'
-                        ? 'bg-amber-950/25 border-amber-500/30'
-                        : 'bg-slate-950/70 border-slate-800'
+                    : confirmed
+                      ? 'bg-blue-950/20 border-blue-500/30'
+                      : status === 'due' || status === 'pre_due'
+                        ? 'bg-emerald-950/30 border-emerald-500/40'
+                        : status === 'missed'
+                          ? 'bg-amber-950/25 border-amber-500/30'
+                          : 'bg-slate-950/70 border-slate-800'
                 }`}
               >
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
                   {!completed ? (
-                    <button
-                      type="button"
-                      onClick={() => onCompleteHabit(habit, todayKey)}
-                      className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white transition-colors cursor-pointer"
-                      title="تسجيل الإنجاز الآن"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => onCompleteHabit(habit, todayKey)}
+                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-emerald-600 text-slate-300 hover:text-white transition-colors cursor-pointer"
+                        title="تسجيل الإنجاز الآن"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                      </button>
+                      {!confirmed && (status === 'pre_due' || status === 'due' || status === 'missed') && (
+                        <button
+                          type="button"
+                          onClick={() => onConfirmReminder(habit.id, time)}
+                          className="p-1.5 rounded-lg bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white transition-colors cursor-pointer"
+                          title="تأكيد التذكير وإيقاف التكرار"
+                        >
+                          <CheckCheck className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </>
                   ) : (
                     <span className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
                       <Check className="w-3.5 h-3.5" />
@@ -226,20 +292,28 @@ export const RemindersPopover: React.FC<RemindersPopoverProps> = ({
                     className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${
                       completed
                         ? 'bg-emerald-500/15 text-emerald-400'
-                        : status === 'due'
-                          ? 'bg-emerald-500/20 text-emerald-300'
-                          : status === 'missed'
-                            ? 'bg-amber-500/20 text-amber-300'
-                            : 'bg-slate-800 text-slate-300'
+                        : confirmed
+                          ? 'bg-blue-500/20 text-blue-300'
+                          : status === 'pre_due'
+                            ? 'bg-teal-500/20 text-teal-300'
+                            : status === 'due'
+                              ? 'bg-emerald-500/20 text-emerald-300'
+                              : status === 'missed'
+                                ? 'bg-amber-500/20 text-amber-300'
+                                : 'bg-slate-800 text-slate-300'
                     }`}
                   >
                     {completed
                       ? 'مكتمل'
-                      : status === 'due'
-                        ? 'حان الوقت'
-                        : status === 'missed'
-                          ? 'فائت اليوم'
-                          : 'قادم'}
+                      : confirmed
+                        ? 'تم التأكيد'
+                        : status === 'pre_due'
+                          ? 'تذكير مبكر'
+                          : status === 'due'
+                            ? 'حان الوقت'
+                            : status === 'missed'
+                              ? 'متأخر'
+                              : 'قادم'}
                   </span>
                 </div>
 

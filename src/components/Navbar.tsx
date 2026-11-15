@@ -15,7 +15,6 @@ import {
 import { User } from 'firebase/auth';
 import { Habit, ReminderSettings, SpreadsheetInfo } from '../types';
 import { TodayReminderItem } from '../hooks/useHabitReminders';
-import { PWAInstallButton } from './PWAInstallButton';
 import { RemindersPopover } from './RemindersPopover';
 
 interface NavbarProps {
@@ -31,13 +30,14 @@ interface NavbarProps {
   browserNotificationPermission: NotificationPermission | 'unsupported';
   onEnableBrowserNotifications: () => Promise<void>;
   todaySchedule: TodayReminderItem[];
+  nextUpcomingReminder: TodayReminderItem | null;
   dueReminderCount: number;
   onCompleteHabitFromReminder: (habit: Habit, dateKey: string) => void;
+  onConfirmReminder: (habitId: string, scheduledTime?: string) => void;
   onTriggerTestReminder: () => void;
   onOpenAddModal: () => void;
   onOpenSettingsModal: () => void;
   onManualSync: () => void;
-  onSignIn: () => void;
   onSignOut: () => void;
 }
 
@@ -54,13 +54,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   browserNotificationPermission,
   onEnableBrowserNotifications,
   todaySchedule,
+  nextUpcomingReminder,
   dueReminderCount,
   onCompleteHabitFromReminder,
+  onConfirmReminder,
   onTriggerTestReminder,
   onOpenAddModal,
   onOpenSettingsModal,
   onManualSync,
-  onSignIn,
   onSignOut,
 }) => {
   const [isRemindersOpen, setIsRemindersOpen] = React.useState(false);
@@ -126,9 +127,6 @@ export const Navbar: React.FC<NavbarProps> = ({
             </div>
           ) : null}
 
-          {/* PWA Install Button */}
-          <PWAInstallButton />
-
           {/* Reminders & Notifications Bell */}
           <div className="relative">
             <button
@@ -157,7 +155,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               browserPermission={browserNotificationPermission}
               onEnableBrowserNotifications={onEnableBrowserNotifications}
               todaySchedule={todaySchedule}
+              nextUpcomingReminder={nextUpcomingReminder}
               onCompleteHabit={onCompleteHabitFromReminder}
+              onConfirmReminder={onConfirmReminder}
               onTriggerTest={onTriggerTestReminder}
             />
           </div>
@@ -193,14 +193,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 <LogOut className="w-4 h-4" />
               </button>
             </div>
-          ) : (
-            <button
-              onClick={onSignIn}
-              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 hover:border-emerald-500/50 text-xs font-semibold text-slate-200 transition-colors"
-            >
-              <span>ربط Google</span>
-            </button>
-          )}
+          ) : null}
         </div>
 
         {/* Brand / Logo */}

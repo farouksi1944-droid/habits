@@ -33,6 +33,8 @@ export interface ReminderSettings {
   enabled: boolean;
   soundEnabled: boolean;
   browserNotificationsEnabled: boolean;
+  leadMinutes: number; // e.g. 60 = start reminding 1 hour before scheduled time
+  repeatIntervalMinutes: number; // e.g. 5 = keep reminding every 5 minutes until confirmed
 }
 
 export interface HabitLog {
