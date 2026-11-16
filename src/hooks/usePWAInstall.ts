@@ -21,11 +21,14 @@ export function usePWAInstall() {
   const [isInIframe, setIsInIframe] = useState(false);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+    const mediaQuery =
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia('(display-mode: standalone)')
+        : null;
 
     const checkStandalone = () => {
       const standalone =
-        mediaQuery.matches ||
+        Boolean(mediaQuery?.matches) ||
         (window.navigator as unknown as { standalone?: boolean }).standalone === true;
       setIsInstalled(standalone);
     };
@@ -63,12 +66,24 @@ export function usePWAInstall() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
-    mediaQuery.addEventListener('change', checkStandalone);
+    if (mediaQuery) {
+      if (typeof mediaQuery.addEventListener === 'function') {
+        mediaQuery.addEventListener('change', checkStandalone);
+      } else if (typeof mediaQuery.addListener === 'function') {
+        mediaQuery.addListener(checkStandalone);
+      }
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
-      mediaQuery.removeEventListener('change', checkStandalone);
+      if (mediaQuery) {
+        if (typeof mediaQuery.removeEventListener === 'function') {
+          mediaQuery.removeEventListener('change', checkStandalone);
+        } else if (typeof mediaQuery.removeListener === 'function') {
+          mediaQuery.removeListener(checkStandalone);
+        }
+      }
     };
   }, []);
 
