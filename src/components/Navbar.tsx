@@ -16,6 +16,7 @@ import { User } from 'firebase/auth';
 import { Habit, ReminderSettings, SpreadsheetInfo } from '../types';
 import { TodayReminderItem } from '../hooks/useHabitReminders';
 import { RemindersPopover } from './RemindersPopover';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface NavbarProps {
   user: User | null;
@@ -95,6 +96,9 @@ export const Navbar: React.FC<NavbarProps> = ({
             <Focus className="w-4 h-4 text-indigo-400" />
             <span className="hidden md:inline">نمط التركيز</span>
           </button>
+
+          {/* Desktop & Mobile PWA Install Button */}
+          <PWAInstallButton />
 
           {/* Sync status & direct link to Google Sheets */}
           {user && spreadsheetInfo?.id ? (

@@ -11,15 +11,23 @@ export default defineConfig(() => {
       tailwindcss(),
       VitePWA({
         registerType: 'autoUpdate',
+        useCredentials: true,
         includeAssets: ['apple-touch-icon.png', 'icon.svg', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
           id: '/',
           name: 'HabitFlow Sheets - متتبع العادات',
           short_name: 'HabitFlow',
           description: 'تطبيق ذكي لتتبع العادات اليومية ويعمل بدون إنترنت مع مزامنة Google Sheets',
+          lang: 'ar',
+          dir: 'rtl',
+          orientation: 'any',
           theme_color: '#020617',
           background_color: '#020617',
           display: 'standalone',
+          display_override: ['standalone'],
+          launch_handler: {
+            client_mode: 'focus-existing',
+          },
           start_url: '/',
           scope: '/',
           icons: [
@@ -44,8 +52,12 @@ export default defineConfig(() => {
           ],
         },
         workbox: {
+          cleanupOutdatedCaches: true,
+          skipWaiting: true,
+          clientsClaim: true,
           maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
           globPatterns: ['**/*.{js,css,html,ico,png,svg,woff,woff2}'],
+          globIgnores: ['assets/aistudio/**'],
           runtimeCaching: [
             {
               urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

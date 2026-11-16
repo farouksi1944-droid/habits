@@ -17,13 +17,20 @@ export function usePWAInstall() {
   );
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
   const [isInIframe, setIsInIframe] = useState(false);
 
   useEffect(() => {
-    const isStandalone =
-      window.matchMedia('(display-mode: standalone)').matches ||
-      (window.navigator as unknown as { standalone?: boolean }).standalone === true;
-    setIsInstalled(isStandalone);
+    const mediaQuery = window.matchMedia('(display-mode: standalone)');
+
+    const checkStandalone = () => {
+      const standalone =
+        mediaQuery.matches ||
+        (window.navigator as unknown as { standalone?: boolean }).standalone === true;
+      setIsInstalled(standalone);
+    };
+
+    checkStandalone();
 
     try {
       setIsInIframe(window.self !== window.top);
@@ -36,7 +43,10 @@ export function usePWAInstall() {
     }
 
     const userAgent = window.navigator.userAgent.toLowerCase();
-    setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+    const isIPadOS =
+      window.navigator.platform === 'MacIntel' && window.navigator.maxTouchPoints > 1;
+    setIsIOS(/iphone|ipad|ipod/.test(userAgent) || isIPadOS);
+    setIsAndroid(/android/.test(userAgent));
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();
@@ -53,31 +63,43 @@ export function usePWAInstall() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
+    mediaQuery.addEventListener('change', checkStandalone);
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      mediaQuery.removeEventListener('change', checkStandalone);
     };
   }, []);
 
   const install = async () => {
     const promptToUse = deferredPrompt || window.__deferredPWAInstallPrompt;
     if (!promptToUse) return false;
-    await promptToUse.prompt();
-    const { outcome } = await promptToUse.userChoice;
-    if (outcome === 'accepted') {
-      setIsInstalled(true);
+
+    try {
+      await promptToUse.prompt();
+      const { outcome } = await promptToUse.userChoice;
+      // Clear single-use prompt event after invocation to avoid InvalidStateError on retry
       setDeferredPrompt(null);
       window.__deferredPWAInstallPrompt = null;
-      return true;
+      if (outcome === 'accepted') {
+        setIsInstalled(true);
+        return true;
+      }
+      return false;
+    } catch {
+      setDeferredPrompt(null);
+      window.__deferredPWAInstallPrompt = null;
+      return false;
     }
-    return false;
   };
 
   return {
     isInstallable: !!deferredPrompt,
     isInstalled,
     isIOS,
+    isAndroid,
+    isMobile: isIOS || isAndroid,
     isInIframe,
     install,
   };
